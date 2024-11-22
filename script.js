@@ -30,43 +30,88 @@ function showGameStatus(message) {
 
 showGameStatus("Game Started! Good luck!");
 
-// 타이머 및 진행 바 초기화
+let timerPaused = false;
+let timerInterval = null; // 타이머 상태 저장
+
 function initTimer() {
-  const progressBarContainer = document.createElement("div");
-  progressBarContainer.id = "progress-bar";
+  // 기존 타이머 중단
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
 
-  const progressBar = document.createElement("div");
-  progressBar.id = "progress";
-  progressBarContainer.appendChild(progressBar);
+  // 기존 진행 바 가져오기 또는 생성
+  let progressBarContainer = document.getElementById("progress-bar");
+  if (!progressBarContainer) {
+    progressBarContainer = document.createElement("div");
+    progressBarContainer.id = "progress-bar";
 
-  const infoContainer = document.getElementById("info");
-  infoContainer.appendChild(progressBarContainer);
+    const progressBar = document.createElement("div");
+    progressBar.id = "progress";
+    progressBar.style.width = "100%"; // 초기화
+    progressBarContainer.appendChild(progressBar);
 
-  // 타이머 시작
-  const timerInterval = setInterval(() => {
-    if (!isExtraGame) {
-      timeLeft--;
-      document.getElementById("timer").textContent = `${timeLeft}s`;
+    const infoContainer = document.getElementById("info");
+    infoContainer.appendChild(progressBarContainer);
+  } else {
+    const progressBar = document.getElementById("progress");
+    if (progressBar) progressBar.style.width = "100%";
+  }
 
-      const progressPercentage = Math.max((timeLeft / 60) * 100, 0);
-      // 음수가 되면 안되니 최소값을 0으로 고정!
-      progressBar.style.width = `${progressPercentage}%`;
+  // 새로운 타이머 시작
+  timerInterval = setInterval(() => {
+    if (!timerPaused) {
+      if (!isExtraGame) {
+        timeLeft--;
+        document.getElementById("timer").textContent = `${timeLeft}s`;
 
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        startExtraGame();
-      }
-    } else {
-      extraTimeLeft--;
-      document.getElementById("extra-timer").textContent = `${extraTimeLeft}s`;
+        const progressPercentage = Math.max((timeLeft / 60) * 100, 0);
+        const progressBar = document.getElementById("progress");
+        if (progressBar) progressBar.style.width = `${progressPercentage}%`;
 
-      if (extraTimeLeft <= 0) {
-        clearInterval(timerInterval);
-        endGame();
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          startExtraGame();
+        }
       }
     }
   }, 1000);
 }
+
+document.getElementById("pause-resume").addEventListener("click", () => {
+  const button = document.getElementById("pause-resume");
+
+  // Pause 상태에서 Restart로 전환
+  if (!timerPaused) {
+    clearInterval(timerInterval); // 기존 타이머 정리
+    timerInterval = null; // 타이머 상태 초기화
+
+    // 버튼 텍스트 업데이트
+    button.textContent = "Restart";
+
+    // 기존 이벤트 리스너 제거 및 Restart 동작 추가
+    button.replaceWith(button.cloneNode(true));
+    const newButton = document.getElementById("pause-resume");
+
+    newButton.addEventListener("click", () => {
+      initGame(); // Restart 버튼처럼 새로운 게임 시작
+    });
+  }
+
+  // Pause 상태 토글
+  timerPaused = !timerPaused;
+});
+
+document.getElementById("restart").addEventListener("click", () => {
+  clearInterval(timerInterval); // 기존 타이머 정리
+  timerInterval = null;
+  initGame(); // 새로운 게임 시작
+});
+
+document.body.addEventListener("keydown", (e) => {
+  if (e.key === "p") toggleTimer();
+});
 
 // 랜덤 그리드 생성
 function generateRandomGrid() {
@@ -213,15 +258,36 @@ function endGame() {
 
 // 게임 초기화
 function initGame() {
+  // 타이머 중지
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  // 상태 초기화
   score = 0;
   timeLeft = 60;
+  extraTimeLeft = 10;
   isExtraGame = false;
   foundPairs = 0;
   selectedCells = [];
+  timerPaused = false;
+
+  // UI 초기화
   document.getElementById("score").textContent = score;
   document.getElementById("timer").textContent = `${timeLeft}s`;
-  document.getElementById("restart").style.display = "none";
   document.getElementById("extra-game").style.display = "none";
+  document.getElementById("restart").style.display = "none";
+
+  // 기존 진행 바 제거
+  const progressBarContainer = document.getElementById("progress-bar");
+  if (progressBarContainer) progressBarContainer.remove();
+
+  // 기존 게임판 초기화
+  const gridContainer = document.getElementById("grid");
+  gridContainer.innerHTML = ""; // 기존 그리드 UI 제거
+
+  // 새로운 게임 시작
   generateRandomGrid();
   initTimer();
 }
@@ -231,8 +297,29 @@ function startExtraGame() {
   showGameStatus("Time's Up! Starting Extra Game!");
   isExtraGame = true;
   extraTimeLeft = 10;
-  document.getElementById("extra-game").style.display = "block";
-  initTimer();
+
+  // 기존 타이머와 진행 바 재사용
+  document.getElementById("extra-game").style.display = "none"; // 기존 아래 표시 제거
+  document.getElementById("timer").textContent = `${extraTimeLeft}s`; // 상단 타이머 업데이트
+  const progressBar = document.getElementById("progress");
+  if (progressBar) progressBar.style.width = "100%";
+
+  // 타이머 초기화
+  if (timerInterval) clearInterval(timerInterval);
+
+  timerInterval = setInterval(() => {
+    extraTimeLeft--;
+    document.getElementById("timer").textContent = `${extraTimeLeft}s`;
+
+    const progressPercentage = Math.max((extraTimeLeft / 10) * 100, 0);
+    if (progressBar) progressBar.style.width = `${progressPercentage}%`;
+
+    if (extraTimeLeft <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      endGame();
+    }
+  }, 1000);
 }
 
 // 점수 저장 및 리더보드 관리
@@ -253,8 +340,11 @@ function showLeaderboard() {
   alert(leaderboard);
 }
 
-// 게임 재시작 버튼
-document.getElementById("restart").addEventListener("click", initGame);
+document.getElementById("restart").addEventListener("click", () => {
+  clearInterval(timerInterval); // 기존 타이머 정리
+  timerInterval = null;
+  initGame(); // 게임 재시작
+});
 
 // 게임 시작
 initGame();
