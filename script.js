@@ -7,22 +7,21 @@ let isExtraGame = false;
 let foundPairs = 0; // 찾은 조합의 개수를 추적
 let selectedCells = []; // 선택된 셀 저장
 
-function showGameStatus(message) {
+function createGameStatusDiv() {
   let statusDiv = document.getElementById("game-status");
-
-  // 기존 상태 메시지가 있으면 재사용
   if (!statusDiv) {
     statusDiv = document.createElement("div");
     statusDiv.id = "game-status";
     document.body.appendChild(statusDiv);
   }
+  return statusDiv;
+}
 
+function showGameStatus(message) {
+  const statusDiv = createGameStatusDiv();
   statusDiv.textContent = message;
-
-  // 하단에 고정된 상태로 표시
   statusDiv.style.display = "block";
 
-  // 3초 후 메시지 숨기기
   setTimeout(() => {
     statusDiv.style.display = "none";
   }, 3000);
@@ -387,6 +386,7 @@ document.getElementById("restart").addEventListener("click", () => {
   clearInterval(timerInterval); // 기존 타이머 정리
   timerInterval = null;
   initGame(); // 게임 재시작
+  showGameStatus("Game Started! Good luck!");
 });
 
 // 게임 시작
