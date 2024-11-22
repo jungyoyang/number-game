@@ -7,6 +7,29 @@ let isExtraGame = false;
 let foundPairs = 0; // 찾은 조합의 개수를 추적
 let selectedCells = []; // 선택된 셀 저장
 
+function showGameStatus(message) {
+  let statusDiv = document.getElementById("game-status");
+
+  // 기존 상태 메시지가 있으면 재사용
+  if (!statusDiv) {
+    statusDiv = document.createElement("div");
+    statusDiv.id = "game-status";
+    document.body.appendChild(statusDiv);
+  }
+
+  statusDiv.textContent = message;
+
+  // 하단에 고정된 상태로 표시
+  statusDiv.style.display = "block";
+
+  // 3초 후 메시지 숨기기
+  setTimeout(() => {
+    statusDiv.style.display = "none";
+  }, 3000);
+}
+
+showGameStatus("Game Started! Good luck!");
+
 // 타이머 및 진행 바 초기화
 function initTimer() {
   const progressBarContainer = document.createElement("div");
@@ -118,22 +141,25 @@ function handleCellClick(x, y) {
     ) {
       // 올바른 쌍
       score += 10;
+      showGameStatus("Correct Pair! +10 Points!");
       document.getElementById("score").textContent = score;
+      const firstCellDiv =
+        document.querySelectorAll(".cell")[first.x * gridSize + first.y];
+      const secondCellDiv =
+        document.querySelectorAll(".cell")[second.x * gridSize + second.y];
 
-      // 짝이 맞은 셀 제거
-      removeCell(first.x, first.y);
-      removeCell(second.x, second.y);
+      // 두 셀 모두에 correctClass 적용
+      firstCellDiv.classList.add("correct");
+      secondCellDiv.classList.add("correct");
 
-      // 조합 찾은 개수 증가
-      foundPairs++;
+      setTimeout(() => {
+        firstCellDiv.classList.remove("correct");
+        secondCellDiv.classList.remove("correct");
 
-      // 8개의 조합을 찾으면 새로운 그리드 생성
-      if (foundPairs >= 8) {
-        foundPairs = 0;
-        setTimeout(() => {
-          generateRandomGrid(); // 새로운 그리드 생성
-        }, 500); // 소멸 애니메이션 후 실행
-      }
+        // 짝이 맞은 셀 제거
+        removeCell(first.x, first.y);
+        removeCell(second.x, second.y);
+      }, 500);
 
       if (isExtraGame) {
         extraTimeLeft = 10; // 10초로 초기화
@@ -176,6 +202,7 @@ function removeCell(x, y) {
 
 // 게임 종료 처리
 function endGame() {
+  showGameStatus("Game Over! Thanks for playing!");
   const nickname = prompt("Game Over! Enter your nickname:");
   if (nickname) {
     saveScore(nickname, score);
@@ -201,6 +228,7 @@ function initGame() {
 
 // 엑스트라 게임 시작
 function startExtraGame() {
+  showGameStatus("Time's Up! Starting Extra Game!");
   isExtraGame = true;
   extraTimeLeft = 10;
   document.getElementById("extra-game").style.display = "block";
