@@ -156,6 +156,30 @@ function renderGrid() {
     });
   });
 }
+// 경로가 비어있는지 확인하는 함수입니다.
+function isPathClear(x1, y1, x2, y2) {
+  const dx = Math.sign(x2 - x1); // x 방향
+  const dy = Math.sign(y2 - y1); // y 방향
+
+  let cx = x1 + dx;
+  let cy = y1 + dy;
+
+  while (cx !== x2 || cy !== y2) {
+    if (grid[cx][cy] !== 0) {
+      return false; // 경로가 막혀 있음
+    }
+    cx += dx;
+    cy += dy;
+  }
+  return true; // 경로가 비어 있음
+}
+
+// 인접 여부 확인하는 함수
+function isAdjacent(x1, y1, x2, y2) {
+  const dx = Math.abs(x2 - x1);
+  const dy = Math.abs(y2 - y1);
+  return dx <= 1 && dy <= 1; // 인접: 가로, 세로, 대각선 포함
+}
 
 // 셀 클릭 처리
 function handleCellClick(x, y) {
@@ -172,9 +196,26 @@ function handleCellClick(x, y) {
   }
 
   // 새로운 셀 선택
-  const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-  cellDiv.classList.add("selected");
-  selectedCells.push({ x, y });
+  if (
+    selectedCells.length === 0 || // 첫 번째 셀 선택
+    (isAdjacent(selectedCells[0].x, selectedCells[0].y, x, y) &&
+      isPathClear(selectedCells[0].x, selectedCells[0].y, x, y)) // 인접하거나 경로가 비어 있는 경우
+  ) {
+    const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+    cellDiv.classList.add("selected");
+    selectedCells.push({ x, y });
+  } else {
+    selectedCells.forEach(({ x, y }) => {
+      const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+      cellDiv.classList.remove("selected");
+    });
+    selectedCells = []; // 선택 상태 초기화
+    // 선택 불가한 셀 클릭 시 무시
+    showGameStatus(
+      "Invalid move! You can only select adjacent or clear path cells."
+    );
+    return;
+  }
 
   // 두 개 선택된 경우 처리
   if (selectedCells.length === 2) {
@@ -188,6 +229,7 @@ function handleCellClick(x, y) {
       score += 10;
       showGameStatus("Correct Pair! +10 Points!");
       document.getElementById("score").textContent = score;
+
       const firstCellDiv =
         document.querySelectorAll(".cell")[first.x * gridSize + first.y];
       const secondCellDiv =
