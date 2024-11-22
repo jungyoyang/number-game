@@ -55,17 +55,6 @@ body {
   animation: fadeOut 0.5s forwards;
 }
 
-@keyframes fadeOut {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.2); /* 약간 커지며 사라짐 */
-  }
-}
-
 /* 선택된 셀 스타일 */
 .cell.selected {
   background-color: #b0e0e6;
@@ -80,7 +69,8 @@ body {
 }
 
 @keyframes shake {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
   25% {

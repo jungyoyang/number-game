@@ -139,12 +139,10 @@ function handleCellClick(x, y) {
       }
     } else {
       // 잘못된 쌍
-      const firstCellDiv = document.querySelectorAll(".cell")[
-        first.x * gridSize + first.y
-      ];
-      const secondCellDiv = document.querySelectorAll(".cell")[
-        second.x * gridSize + second.y
-      ];
+      const firstCellDiv =
+        document.querySelectorAll(".cell")[first.x * gridSize + first.y];
+      const secondCellDiv =
+        document.querySelectorAll(".cell")[second.x * gridSize + second.y];
       firstCellDiv.classList.add("wrong");
       secondCellDiv.classList.add("wrong");
 
@@ -174,7 +172,6 @@ function removeCell(x, y) {
     grid[x][y] = 0; // 그리드 값 0으로 설정
   }, 500); // 애니메이션 완료 후 처리
 }
-
 
 // 게임 종료 처리
 function endGame() {
