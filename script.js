@@ -25,7 +25,8 @@ function initTimer() {
       timeLeft--;
       document.getElementById("timer").textContent = `${timeLeft}s`;
 
-      const progressPercentage = (timeLeft / 60) * 100;
+      const progressPercentage = Math.max((timeLeft / 60) * 100, 0);
+      // 음수가 되면 안되니 최소값을 0으로 고정!
       progressBar.style.width = `${progressPercentage}%`;
 
       if (timeLeft <= 0) {
