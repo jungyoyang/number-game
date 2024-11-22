@@ -158,20 +158,26 @@ function renderGrid() {
 }
 // 경로가 비어있는지 확인하는 함수입니다.
 function isPathClear(x1, y1, x2, y2) {
-  const dx = Math.sign(x2 - x1); // x 방향
-  const dy = Math.sign(y2 - y1); // y 방향
+  const dx = Math.sign(x2 - x1); // x 방향 이동량
+  const dy = Math.sign(y2 - y1); // y 방향 이동량
+
+  // 직선 또는 대각선 경로만 허용
+  if (Math.abs(x2 - x1) !== Math.abs(y2 - y1) && x1 !== x2 && y1 !== y2) {
+    return false; // 꺾인 경로는 허용하지 않음
+  }
 
   let cx = x1 + dx;
   let cy = y1 + dy;
 
+  // 경로 중간에 다른 셀이 있는지 확인
   while (cx !== x2 || cy !== y2) {
     if (grid[cx][cy] !== 0) {
-      return false; // 경로가 막혀 있음
+      return false; // 경로에 셀이 있으면 실패
     }
     cx += dx;
     cy += dy;
   }
-  return true; // 경로가 비어 있음
+  return true; // 경로가 비어있음
 }
 
 // 인접 여부 확인하는 함수
@@ -198,18 +204,13 @@ function handleCellClick(x, y) {
   // 새로운 셀 선택
   if (
     selectedCells.length === 0 || // 첫 번째 셀 선택
-    (isAdjacent(selectedCells[0].x, selectedCells[0].y, x, y) &&
-      isPathClear(selectedCells[0].x, selectedCells[0].y, x, y)) // 인접하거나 경로가 비어 있는 경우
+    isAdjacent(selectedCells[0].x, selectedCells[0].y, x, y) || // 인접한 경우
+    isPathClear(selectedCells[0].x, selectedCells[0].y, x, y) // 경로가 비어있는 경우
   ) {
     const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
     cellDiv.classList.add("selected");
     selectedCells.push({ x, y });
   } else {
-    selectedCells.forEach(({ x, y }) => {
-      const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-      cellDiv.classList.remove("selected");
-    });
-    selectedCells = []; // 선택 상태 초기화
     // 선택 불가한 셀 클릭 시 무시
     showGameStatus(
       "Invalid move! You can only select adjacent or clear path cells."
