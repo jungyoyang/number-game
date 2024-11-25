@@ -24,6 +24,21 @@ body {
   background-color: white; /* 흰 배경 */
 }
 
+#game-status {
+  position: fixed;
+  bottom: 30px; /* 화면 하단에서 10px 위 */
+  left: 50%;
+  transform: translateX(-50%); /* 가운데 정렬 */
+  background-color: #525151; /* 어두운 배경 */
+  color: #fff; /* 밝은 글자 */
+  padding: 10px 20px; /* 여백 추가 */
+  border-radius: 5px; /* 모서리 둥글게 */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 약간의 그림자 */
+  font-size: 16px; /* 텍스트 크기 */
+  z-index: 1000; /* 최상위 표시 */
+  display: none; /* 기본적으로 숨김 상태 */
+}
+
 /* 기본 셀 스타일 */
 .cell {
   width: 40px;
@@ -55,22 +70,16 @@ body {
   animation: fadeOut 0.5s forwards;
 }
 
-@keyframes fadeOut {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.2); /* 약간 커지며 사라짐 */
-  }
-}
-
 /* 선택된 셀 스타일 */
 .cell.selected {
   background-color: #b0e0e6;
   transform: scale(1.1);
   transition: background-color 0.3s, transform 0.3s;
+}
+/* 올바른 선택 (초록색으로 바꾸기)*/
+.cell.correct {
+  background-color: #c1f2cd !important; /* 초록색 (올바른 쌍) */
+  transition: background-color 0.3s ease; /* 색상 전환 부드럽게 */
 }
 
 /* 잘못된 선택 (빨간색 및 흔들림 효과) */
@@ -80,7 +89,8 @@ body {
 }
 
 @keyframes shake {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
   25% {
