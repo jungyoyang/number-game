@@ -142,3 +142,17 @@ body {
   pointer-events: none; /* 클릭 불가 */
   box-shadow: none; /* 그림자 제거 */
 }
+
+.cell.hint {
+  animation: hintAnimation 1s infinite;
+  background-color: #ffff99 !important; /* 노란색 강조 */
+}
+
+@keyframes hintAnimation {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2); /* 크기 변화를 통해 강조 */
+  }
+}
