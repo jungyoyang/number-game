@@ -1,7 +1,7 @@
 const gridSize = 10;
 let grid = [];
 let score = 0;
-let timeLeft = 60;
+let timeLeft = 120;
 let extraTimeLeft = 10;
 let isExtraGame = false;
 let foundPairs = 0; // 찾은 조합의 개수를 추적
@@ -65,7 +65,7 @@ function initTimer() {
         timeLeft--;
         document.getElementById("timer").textContent = `${timeLeft}s`;
 
-        const progressPercentage = Math.max((timeLeft / 60) * 100, 0);
+        const progressPercentage = Math.max((timeLeft / 120) * 100, 0);
         const progressBar = document.getElementById("progress");
         if (progressBar) progressBar.style.width = `${progressPercentage}%`;
 
@@ -158,26 +158,61 @@ function renderGrid() {
 }
 // 경로가 비어있는지 확인하는 함수입니다.
 function isPathClear(x1, y1, x2, y2) {
-  const dx = Math.sign(x2 - x1); // x 방향 이동량
-  const dy = Math.sign(y2 - y1); // y 방향 이동량
-
-  // 직선 또는 대각선 경로만 허용
-  if (Math.abs(x2 - x1) !== Math.abs(y2 - y1) && x1 !== x2 && y1 !== y2) {
-    return false; // 꺾인 경로는 허용하지 않음
-  }
-
-  let cx = x1 + dx;
-  let cy = y1 + dy;
-
-  // 경로 중간에 다른 셀이 있는지 확인
-  while (cx !== x2 || cy !== y2) {
-    if (grid[cx][cy] !== 0) {
-      return false; // 경로에 셀이 있으면 실패
+  // 같은 행에서 연결 확인 (직선)
+  if (x1 === x2) {
+    const [start, end] = [Math.min(y1, y2), Math.max(y1, y2)];
+    for (let y = start + 1; y < end; y++) {
+      if (grid[x1][y] !== 0) return false; // 중간에 숫자가 있으면 차단
     }
-    cx += dx;
-    cy += dy;
+    return true;
   }
-  return true; // 경로가 비어있음
+
+  // 같은 열에서 연결 확인 (직선)
+  if (y1 === y2) {
+    const [start, end] = [Math.min(x1, x2), Math.max(x1, x2)];
+    for (let x = start + 1; x < end; x++) {
+      if (grid[x][y1] !== 0) return false; // 중간에 숫자가 있으면 차단
+    }
+    return true;
+  }
+
+  // 대각선에서 연결 확인 (중간에 숫자 하나만 허용)
+  if (Math.abs(x2 - x1) === Math.abs(y2 - y1)) {
+    let middleBlocked = 0;
+    const dx = x2 > x1 ? 1 : -1;
+    const dy = y2 > y1 ? 1 : -1;
+
+    let cx = x1 + dx;
+    let cy = y1 + dy;
+
+    while (cx !== x2 && cy !== y2) {
+      if (grid[cx][cy] !== 0) {
+        middleBlocked++;
+        if (middleBlocked > 1) return false;
+      }
+      cx += dx;
+      cy += dy;
+    }
+    return true;
+  }
+
+  // 꺾이는 경로 확인
+  if (
+    grid[x1][y2] === 0 &&
+    isPathClear(x1, y1, x1, y2) &&
+    isPathClear(x1, y2, x2, y2)
+  ) {
+    return true;
+  }
+  if (
+    grid[x2][y1] === 0 &&
+    isPathClear(x1, y1, x2, y1) &&
+    isPathClear(x2, y1, x2, y2)
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 // 인접 여부 확인하는 함수
@@ -193,7 +228,6 @@ function handleCellClick(x, y) {
     (cell) => cell.x === x && cell.y === y
   );
 
-  // 이미 선택된 셀 클릭 시 취소
   if (cellIndex !== -1) {
     const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
     cellDiv.classList.remove("selected");
@@ -201,73 +235,29 @@ function handleCellClick(x, y) {
     return;
   }
 
-  // 새로운 셀 선택
-  if (
-    selectedCells.length === 0 || // 첫 번째 셀 선택
-    isAdjacent(selectedCells[0].x, selectedCells[0].y, x, y) || // 인접한 경우
-    isPathClear(selectedCells[0].x, selectedCells[0].y, x, y) // 경로가 비어있는 경우
-  ) {
-    const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-    cellDiv.classList.add("selected");
-    selectedCells.push({ x, y });
-  } else {
-    // 선택 불가한 셀 클릭 시 무시
-    showGameStatus(
-      "Invalid move! You can only select adjacent or clear path cells."
-    );
-    return;
-  }
+  const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+  cellDiv.classList.add("selected");
+  selectedCells.push({ x, y });
 
-  // 두 개 선택된 경우 처리
   if (selectedCells.length === 2) {
     const [first, second] = selectedCells;
 
     if (
       grid[first.x][first.y] + grid[second.x][second.y] === 10 &&
-      (first.x !== second.x || first.y !== second.y)
+      isPathClear(first.x, first.y, second.x, second.y)
     ) {
-      // 올바른 쌍
       score += 10;
       showGameStatus("Correct Pair! +10 Points!");
       document.getElementById("score").textContent = score;
 
-      const firstCellDiv =
-        document.querySelectorAll(".cell")[first.x * gridSize + first.y];
-      const secondCellDiv =
-        document.querySelectorAll(".cell")[second.x * gridSize + second.y];
-
-      // 두 셀 모두에 correctClass 적용
-      firstCellDiv.classList.add("correct");
-      secondCellDiv.classList.add("correct");
-
       setTimeout(() => {
-        firstCellDiv.classList.remove("correct");
-        secondCellDiv.classList.remove("correct");
-
-        // 짝이 맞은 셀 제거
         removeCell(first.x, first.y);
         removeCell(second.x, second.y);
       }, 500);
-
-      if (isExtraGame) {
-        extraTimeLeft = 10; // 10초로 초기화
-      }
     } else {
-      // 잘못된 쌍
-      const firstCellDiv =
-        document.querySelectorAll(".cell")[first.x * gridSize + first.y];
-      const secondCellDiv =
-        document.querySelectorAll(".cell")[second.x * gridSize + second.y];
-      firstCellDiv.classList.add("wrong");
-      secondCellDiv.classList.add("wrong");
-
-      setTimeout(() => {
-        firstCellDiv.classList.remove("wrong");
-        secondCellDiv.classList.remove("wrong");
-      }, 500);
+      showGameStatus("Invalid Pair!");
     }
 
-    // 선택 초기화
     selectedCells.forEach(({ x, y }) => {
       const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
       cellDiv.classList.remove("selected");
@@ -309,7 +299,7 @@ function initGame() {
 
   // 상태 초기화
   score = 0;
-  timeLeft = 60;
+  timeLeft = 120;
   extraTimeLeft = 10;
   isExtraGame = false;
   foundPairs = 0;
@@ -391,3 +381,490 @@ document.getElementById("restart").addEventListener("click", () => {
 
 // 게임 시작
 initGame();
+
+let hintCount = 3; // 힌트 사용 제한
+
+// 힌트 버튼 클릭 이벤트
+document.getElementById("hint").addEventListener("click", () => {
+  if (hintCount <= 0) {
+    showGameStatus("No hints left!");
+    return;
+  }
+
+  // 가능한 짝 찾기
+  let pairFound = false; // 유효한 짝이 발견되었는지 추적
+
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      if (grid[i][j] === 0) continue; // 빈 셀은 건너뜀
+
+      for (let k = 0; k < gridSize; k++) {
+        for (let l = 0; l < gridSize; l++) {
+          if (grid[k][l] === 0 || (i === k && j === l)) continue; // 자기 자신 또는 빈 셀은 제외
+
+          // 숫자 합과 경로 확인
+          if (
+            grid[i][j] + grid[k][l] === 10 &&
+            isPathClear(i, j, k, l) // 경로 확인
+          ) {
+            // 유효한 짝 발견
+            const firstCellDiv =
+              document.querySelectorAll(".cell")[i * gridSize + j];
+            const secondCellDiv =
+              document.querySelectorAll(".cell")[k * gridSize + l];
+
+            // 힌트 강조
+            firstCellDiv.classList.add("hint");
+            secondCellDiv.classList.add("hint");
+
+            // 1초 후 강조 효과 제거
+            setTimeout(() => {
+              firstCellDiv.classList.remove("hint");
+              secondCellDiv.classList.remove("hint");
+            }, 1000);
+
+            // 점수 차감 및 힌트 사용 감소
+            score -= 5;
+            document.getElementById("score").textContent = score;
+
+            hintCount--;
+            document.getElementById(
+              "hint"
+            ).textContent = `Hint (${hintCount} left)`;
+
+            pairFound = true; // 짝이 발견되었음을 표시
+            return; // 한 쌍만 표시하고 종료
+          }
+        }
+      }
+    }
+  }
+
+  // 짝이 발견되지 않은 경우
+  if (!pairFound) {
+    showGameStatus("No valid pairs found!");
+  }
+});
+
+// 점수 효과 표시
+function showScoreEffect(x, y, delta) {
+  const effect = document.createElement("div");
+  effect.className = "score-effect";
+  effect.textContent = `+${delta}`;
+
+  const gridContainer = document.getElementById("grid");
+  const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+
+  // 셀 위치 계산
+  const cellRect = cellDiv.getBoundingClientRect();
+  const gridRect = gridContainer.getBoundingClientRect();
+
+  // 상대 좌표 계산 (그리드 기준)
+  effect.style.left = `${cellRect.left - gridRect.left + cellRect.width / 2}px`;
+  effect.style.top = `${cellRect.top - gridRect.top + cellRect.height / 2}px`;
+
+  // 점수 효과 추가
+  gridContainer.appendChild(effect);
+
+  // 1초 후 점수 효과 제거
+  setTimeout(() => {
+    effect.remove();
+  }, 1000);
+}
+
+// 별 효과 표시
+function showStarEffect(x, y) {
+  const star = document.createElement("div");
+  star.className = "star-effect";
+  star.style.left = `${y * 45 + 10}px`; // 셀 중앙
+  star.style.top = `${x * 45 + 10}px`;
+  star.style.position = "absolute";
+
+  const gridContainer = document.getElementById("grid");
+  gridContainer.appendChild(star);
+
+  setTimeout(() => {
+    star.remove(); // 효과가 끝나면 삭제
+  }, 1000);
+}
+
+// 셀 클릭 처리
+function handleCellClick(x, y) {
+  const cellIndex = selectedCells.findIndex(
+    (cell) => cell.x === x && cell.y === y
+  );
+
+  if (cellIndex !== -1) {
+    const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+    cellDiv.classList.remove("selected");
+    selectedCells.splice(cellIndex, 1);
+    return;
+  }
+
+  const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+  cellDiv.classList.add("selected");
+  selectedCells.push({ x, y });
+
+  if (selectedCells.length === 2) {
+    const [first, second] = selectedCells;
+
+    if (
+      grid[first.x][first.y] + grid[second.x][second.y] === 10 &&
+      isPathClear(first.x, first.y, second.x, second.y)
+    ) {
+      score += 10;
+      document.getElementById("score").textContent = score;
+
+      // 효과 표시
+      showScoreEffect(first.x, first.y, 10);
+      showStarEffect(first.x, first.y);
+      showStarEffect(second.x, second.y);
+
+      setTimeout(() => {
+        removeCell(first.x, first.y);
+        removeCell(second.x, second.y);
+      }, 500);
+    } else {
+      showGameStatus("Invalid Pair!");
+    }
+
+    selectedCells.forEach(({ x, y }) => {
+      const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+      cellDiv.classList.remove("selected");
+    });
+    selectedCells = [];
+  }
+}
+
+// 알맞은 짝을 맞춘 경우
+if (grid[first.x][first.y] + grid[second.x][second.y] === 10) {
+  score += 10;
+  // 점수 효과 호출
+  showScoreEffect(first.x, first.y, 10);
+  showScoreEffect(second.x, second.y, 10);
+
+  // 짝 제거
+  setTimeout(() => {
+    removeCell(first.x, first.y);
+    removeCell(second.x, second.y);
+  }, 500);
+  document.getElementById("score").textContent = score;
+}
+
+function isPathClear(x1, y1, x2, y2) {
+  // 같은 행에서 연결 확인 (직선)
+  if (x1 === x2) {
+    const [start, end] = [Math.min(y1, y2), Math.max(y1, y2)];
+    for (let y = start + 1; y < end; y++) {
+      if (grid[x1][y] !== 0) return false; // 중간에 숫자가 있으면 차단
+    }
+    return true; // 경로가 뚫려 있음
+  }
+
+  // 같은 열에서 연결 확인 (직선)
+  if (y1 === y2) {
+    const [start, end] = [Math.min(x1, x2), Math.max(x1, x2)];
+    for (let x = start + 1; x < end; x++) {
+      if (grid[x][y1] !== 0) return false; // 중간에 숫자가 있으면 차단
+    }
+    return true; // 경로가 뚫려 있음
+  }
+
+  // 대각선에서 연결 확인 (중간에 숫자 하나만 허용)
+  if (Math.abs(x2 - x1) === Math.abs(y2 - y1)) {
+    let middleBlocked = 0;
+    const dx = x2 > x1 ? 1 : -1; // x 방향 이동량
+    const dy = y2 > y1 ? 1 : -1; // y 방향 이동량
+
+    let cx = x1 + dx;
+    let cy = y1 + dy;
+
+    while (cx !== x2 && cy !== y2) {
+      if (grid[cx][cy] !== 0) {
+        middleBlocked++;
+        if (middleBlocked > 1) return false; // 중간에 숫자가 2개 이상이면 차단
+      }
+      cx += dx;
+      cy += dy;
+    }
+    return true; // 중간에 숫자가 하나만 있는 경우
+  }
+
+  // 꺾이는 경로 확인 (사천성 스타일)
+  if (
+    grid[x1][y2] === 0 && // 중간 노드가 비어 있고
+    isPathClear(x1, y1, x1, y2) && // 첫 번째 노드에서 중간 노드까지 경로가 명확하며
+    isPathClear(x1, y2, x2, y2) // 중간 노드에서 두 번째 노드까지 경로가 명확한 경우
+  ) {
+    return true;
+  }
+  if (
+    grid[x2][y1] === 0 && // 다른 중간 노드가 비어 있고
+    isPathClear(x1, y1, x2, y1) && // 첫 번째 노드에서 중간 노드까지 경로가 명확하며
+    isPathClear(x2, y1, x2, y2) // 중간 노드에서 두 번째 노드까지 경로가 명확한 경우
+  ) {
+    return true;
+  }
+
+  return false; // 연결 불가능
+}
+
+function handleCellClick(x, y) {
+  const cellIndex = selectedCells.findIndex(
+    (cell) => cell.x === x && cell.y === y
+  );
+
+  // 이미 선택된 셀 클릭 시 취소
+  if (cellIndex !== -1) {
+    const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+    cellDiv.classList.remove("selected");
+    selectedCells.splice(cellIndex, 1);
+    return;
+  }
+
+  // 새로운 셀 선택
+  const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+  cellDiv.classList.add("selected");
+  selectedCells.push({ x, y });
+
+  // 두 개 선택된 경우 처리
+  if (selectedCells.length === 2) {
+    const [first, second] = selectedCells;
+
+    // 짝 확인: 숫자 합이 10이고, 경로가 뚫려 있어야 함
+    if (
+      grid[first.x][first.y] + grid[second.x][second.y] === 10 &&
+      isPathClear(first.x, first.y, second.x, second.y)
+    ) {
+      // 올바른 쌍
+      score += 10;
+      showGameStatus("Correct Pair! +10 Points!");
+      document.getElementById("score").textContent = score;
+
+      const firstCellDiv =
+        document.querySelectorAll(".cell")[first.x * gridSize + first.y];
+      const secondCellDiv =
+        document.querySelectorAll(".cell")[second.x * gridSize + second.y];
+
+      // 올바른 쌍 효과 표시
+      showScoreEffect(first.x, first.y, 10);
+      showStarEffect(first.x, first.y);
+      showStarEffect(second.x, second.y);
+
+      setTimeout(() => {
+        removeCell(first.x, first.y);
+        removeCell(second.x, second.y);
+      }, 500);
+    } else {
+      // 잘못된 쌍
+      showGameStatus("Invalid Pair!");
+    }
+
+    // 선택 초기화
+    selectedCells.forEach(({ x, y }) => {
+      const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+      cellDiv.classList.remove("selected");
+    });
+    selectedCells = [];
+  }
+}
+
+function removeCell(x, y) {
+  const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+  cellDiv.classList.add("fade-out"); // 소멸 애니메이션 추가
+  setTimeout(() => {
+    cellDiv.textContent = ""; // 텍스트 제거
+    cellDiv.classList.remove("fade-out"); // 소멸 애니메이션 제거
+    cellDiv.classList.add("empty"); // 빈 셀 스타일 적용
+    grid[x][y] = 0; // 그리드 값 0으로 설정
+  }, 500); // 애니메이션 완료 후 처리
+}
+
+function isPathClear(x1, y1, x2, y2) {
+  // 같은 행에서 연결 확인
+  if (x1 === x2) {
+    const [start, end] = [Math.min(y1, y2), Math.max(y1, y2)];
+    for (let y = start + 1; y < end; y++) {
+      if (grid[x1][y] !== 0) return false; // 중간에 숫자가 있으면 차단
+    }
+    return true; // 경로가 뚫려 있음
+  }
+
+  // 같은 열에서 연결 확인
+  if (y1 === y2) {
+    const [start, end] = [Math.min(x1, x2), Math.max(x1, x2)];
+    for (let x = start + 1; x < end; x++) {
+      if (grid[x][y1] !== 0) return false; // 중간에 숫자가 있으면 차단
+    }
+    return true; // 경로가 뚫려 있음
+  }
+
+  // 대각선에서 연결 확인 (중간에 숫자 하나만 허용)
+  if (Math.abs(x2 - x1) === Math.abs(y2 - y1)) {
+    let middleBlocked = 0;
+    const dx = x2 > x1 ? 1 : -1; // x 방향 이동량
+    const dy = y2 > y1 ? 1 : -1; // y 방향 이동량
+
+    let cx = x1 + dx;
+    let cy = y1 + dy;
+
+    while (cx !== x2 && cy !== y2) {
+      if (grid[cx][cy] !== 0) {
+        middleBlocked++;
+        if (middleBlocked > 1) return false; // 중간에 숫자가 2개 이상이면 차단
+      }
+      cx += dx;
+      cy += dy;
+    }
+    return true; // 중간에 숫자가 하나만 있는 경우
+  }
+
+  // 꺾이는 경로 확인 (사천성 스타일)
+  if (
+    grid[x1][y2] === 0 &&
+    isPathClear(x1, y1, x1, y2) &&
+    isPathClear(x1, y2, x2, y2)
+  ) {
+    return true;
+  }
+  if (
+    grid[x2][y1] === 0 &&
+    isPathClear(x1, y1, x2, y1) &&
+    isPathClear(x2, y1, x2, y2)
+  ) {
+    return true;
+  }
+
+  return false; // 연결 불가능
+}
+
+function isPathClear(x1, y1, x2, y2) {
+  console.log(`Checking path between (${x1}, ${y1}) and (${x2}, ${y2})`);
+
+  // 같은 행에서 연결 확인 (직선)
+  if (x1 === x2) {
+    const [start, end] = [Math.min(y1, y2), Math.max(y1, y2)];
+    for (let y = start + 1; y < end; y++) {
+      if (grid[x1][y] !== 0) {
+        console.log(`Blocked at (${x1}, ${y})`);
+        return false; // 중간에 숫자가 있으면 차단
+      }
+    }
+    return true; // 경로가 뚫려 있음
+  }
+
+  // 같은 열에서 연결 확인 (직선)
+  if (y1 === y2) {
+    const [start, end] = [Math.min(x1, x2), Math.max(x1, x2)];
+    for (let x = start + 1; x < end; x++) {
+      if (grid[x][y1] !== 0) {
+        console.log(`Blocked at (${x}, ${y1})`);
+        return false; // 중간에 숫자가 있으면 차단
+      }
+    }
+    return true; // 경로가 뚫려 있음
+  }
+
+  // 대각선에서 연결 확인 (중간에 숫자 하나만 허용)
+  if (Math.abs(x2 - x1) === Math.abs(y2 - y1)) {
+    let middleBlocked = 0;
+    const dx = x2 > x1 ? 1 : -1; // x 방향 이동량
+    const dy = y2 > y1 ? 1 : -1; // y 방향 이동량
+
+    let cx = x1 + dx;
+    let cy = y1 + dy;
+
+    while (cx !== x2 && cy !== y2) {
+      if (grid[cx][cy] !== 0) {
+        middleBlocked++;
+        console.log(`Middle blocked at (${cx}, ${cy})`);
+        if (middleBlocked > 1) {
+          return false; // 중간에 숫자가 2개 이상이면 차단
+        }
+      }
+      cx += dx;
+      cy += dy;
+    }
+    return true; // 중간에 숫자가 하나만 있는 경우
+  }
+
+  // 꺾이는 경로 확인 (사천성 스타일)
+  if (
+    grid[x1][y2] === 0 &&
+    isPathClear(x1, y1, x1, y2) &&
+    isPathClear(x1, y2, x2, y2)
+  ) {
+    return true;
+  }
+  if (
+    grid[x2][y1] === 0 &&
+    isPathClear(x1, y1, x2, y1) &&
+    isPathClear(x2, y1, x2, y2)
+  ) {
+    return true;
+  }
+
+  console.log(`No valid path between (${x1}, ${y1}) and (${x2}, ${y2})`);
+  return false; // 연결 불가능
+}
+
+document.getElementById("hint").addEventListener("click", () => {
+  if (hintCount <= 0) {
+    showGameStatus("No hints left!");
+    return;
+  }
+
+  // 가능한 짝 찾기
+  let pairFound = false;
+
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      if (grid[i][j] === 0) continue; // 빈 셀 건너뛰기
+
+      for (let k = 0; k < gridSize; k++) {
+        for (let l = 0; l < gridSize; l++) {
+          if (
+            grid[k][l] === 0 || // 빈 셀은 건너뛰기
+            (i === k && j === l) // 동일한 셀은 무시
+          )
+            continue;
+
+          // 숫자 합과 경로 확인
+          if (grid[i][j] + grid[k][l] === 10 && isPathClear(i, j, k, l)) {
+            // 유효한 쌍 발견
+            const firstCellDiv =
+              document.querySelectorAll(".cell")[i * gridSize + j];
+            const secondCellDiv =
+              document.querySelectorAll(".cell")[k * gridSize + l];
+
+            // 힌트 강조
+            firstCellDiv.classList.add("hint");
+            secondCellDiv.classList.add("hint");
+
+            setTimeout(() => {
+              firstCellDiv.classList.remove("hint");
+              secondCellDiv.classList.remove("hint");
+            }, 1000);
+
+            // 점수 차감 및 힌트 사용 감소
+            score -= 5;
+            document.getElementById("score").textContent = score;
+
+            hintCount--;
+            document.getElementById(
+              "hint"
+            ).textContent = `Hint (${hintCount} left)`;
+
+            pairFound = true;
+            return; // 한 쌍만 표시하고 종료
+          }
+        }
+      }
+    }
+  }
+
+  // 유효한 짝이 없을 경우
+  if (!pairFound) {
+    showGameStatus("No valid pairs found!");
+  }
+});
