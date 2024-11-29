@@ -1,11 +1,12 @@
 const gridSize = 10;
 let grid = [];
 let score = 0;
-let timeLeft = 120;
+let timeLeft = 60;
 let extraTimeLeft = 10;
 let isExtraGame = false;
 let foundPairs = 0; // 찾은 조합의 개수를 추적
 let selectedCells = []; // 선택된 셀 저장
+let hintCount = 3; // 힌트 사용 제한
 
 function showGameStatus(message) {
   let statusDiv = document.getElementById("game-status");
@@ -65,7 +66,7 @@ function initTimer() {
         timeLeft--;
         document.getElementById("timer").textContent = `${timeLeft}s`;
 
-        const progressPercentage = Math.max((timeLeft / 120) * 100, 0);
+        const progressPercentage = Math.max((timeLeft / 60) * 100, 0);
         const progressBar = document.getElementById("progress");
         if (progressBar) progressBar.style.width = `${progressPercentage}%`;
 
@@ -106,6 +107,7 @@ document.getElementById("pause-resume").addEventListener("click", () => {
 document.getElementById("restart").addEventListener("click", () => {
   clearInterval(timerInterval); // 기존 타이머 정리
   timerInterval = null;
+  hintCount = 3;
   initGame(); // 새로운 게임 시작
 });
 
@@ -148,6 +150,8 @@ function renderGrid() {
       cellDiv.className = "cell";
       if (cell !== 0) {
         cellDiv.textContent = cell;
+
+        // 리스너 중복 방지: 새로운 셀에만 추가
         cellDiv.addEventListener("click", () => handleCellClick(i, j));
       } else {
         cellDiv.classList.add("empty"); // 빈 셀은 흰색 표시
@@ -162,62 +166,6 @@ function isAdjacent(x1, y1, x2, y2) {
   const dx = Math.abs(x2 - x1);
   const dy = Math.abs(y2 - y1);
   return dx <= 1 && dy <= 1; // 인접: 가로, 세로, 대각선 포함
-}
-
-// 셀 클릭 처리
-function handleCellClick(x, y) {
-  const cellIndex = selectedCells.findIndex(
-    (cell) => cell.x === x && cell.y === y
-  );
-
-  if (cellIndex !== -1) {
-    const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-    cellDiv.classList.remove("selected");
-    selectedCells.splice(cellIndex, 1);
-    return;
-  }
-
-  const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-  cellDiv.classList.add("selected");
-  selectedCells.push({ x, y });
-
-  if (selectedCells.length === 2) {
-    const [first, second] = selectedCells;
-
-    if (
-      grid[first.x][first.y] + grid[second.x][second.y] === 10 &&
-      isPathClear(first.x, first.y, second.x, second.y)
-    ) {
-      score += 10;
-      showGameStatus("Correct Pair! +10 Points!");
-      document.getElementById("score").textContent = score;
-
-      setTimeout(() => {
-        removeCell(first.x, first.y);
-        removeCell(second.x, second.y);
-      }, 500);
-    } else {
-      showGameStatus("Invalid Pair!");
-    }
-
-    selectedCells.forEach(({ x, y }) => {
-      const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-      cellDiv.classList.remove("selected");
-    });
-    selectedCells = [];
-  }
-}
-
-// 셀을 소멸시키는 함수 (애니메이션 후 흰색 유지)
-function removeCell(x, y) {
-  const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-  cellDiv.classList.add("fade-out"); // 소멸 애니메이션 추가
-  setTimeout(() => {
-    cellDiv.textContent = ""; // 텍스트 제거
-    cellDiv.classList.remove("fade-out"); // 소멸 애니메이션 제거
-    cellDiv.classList.add("empty"); // 빈 셀 스타일 적용 (흰색 유지)
-    grid[x][y] = 0; // 그리드 값 0으로 설정
-  }, 500); // 애니메이션 완료 후 처리
 }
 
 // 게임 종료 처리
@@ -241,12 +189,15 @@ function initGame() {
 
   // 상태 초기화
   score = 0;
-  timeLeft = 120;
+  timeLeft = 60;
   extraTimeLeft = 10;
   isExtraGame = false;
   foundPairs = 0;
   selectedCells = [];
   timerPaused = false;
+  hintCount = 3;
+
+  document.getElementById("hint").textContent = `Hint (${hintCount} left)`;
 
   // UI 초기화
   document.getElementById("score").textContent = score;
@@ -324,8 +275,6 @@ document.getElementById("restart").addEventListener("click", () => {
 // 게임 시작
 initGame();
 
-let hintCount = 3; // 힌트 사용 제한
-
 // 힌트 버튼 클릭 이벤트
 document.getElementById("hint").addEventListener("click", () => {
   if (hintCount <= 0) {
@@ -333,23 +282,24 @@ document.getElementById("hint").addEventListener("click", () => {
     return;
   }
 
-  // 가능한 짝 찾기
-  let pairFound = false; // 유효한 짝이 발견되었는지 추적
+  // 가능한 쌍 찾기
+  let pairFound = false;
 
   for (let i = 0; i < gridSize; i++) {
     for (let j = 0; j < gridSize; j++) {
-      if (grid[i][j] === 0) continue; // 빈 셀은 건너뜀
+      if (grid[i][j] === 0) continue; // 빈 셀은 건너뛰기
 
       for (let k = 0; k < gridSize; k++) {
         for (let l = 0; l < gridSize; l++) {
-          if (grid[k][l] === 0 || (i === k && j === l)) continue; // 자기 자신 또는 빈 셀은 제외
+          if (
+            grid[k][l] === 0 || // 빈 셀은 건너뛰기
+            (i === k && j === l) // 동일한 셀은 무시
+          )
+            continue;
 
           // 숫자 합과 경로 확인
-          if (
-            grid[i][j] + grid[k][l] === 10 &&
-            isPathClear(i, j, k, l) // 경로 확인
-          ) {
-            // 유효한 짝 발견
+          if (grid[i][j] + grid[k][l] === 10 && isPathClear(i, j, k, l)) {
+            // 유효한 쌍 발견
             const firstCellDiv =
               document.querySelectorAll(".cell")[i * gridSize + j];
             const secondCellDiv =
@@ -359,22 +309,21 @@ document.getElementById("hint").addEventListener("click", () => {
             firstCellDiv.classList.add("hint");
             secondCellDiv.classList.add("hint");
 
-            // 1초 후 강조 효과 제거
             setTimeout(() => {
               firstCellDiv.classList.remove("hint");
               secondCellDiv.classList.remove("hint");
             }, 1000);
 
             // 점수 차감 및 힌트 사용 감소
-            score -= 5;
+            score -= 5; // 점수 감소
             document.getElementById("score").textContent = score;
 
-            hintCount--;
+            hintCount--; // 힌트 사용 감소
             document.getElementById(
               "hint"
             ).textContent = `Hint (${hintCount} left)`;
 
-            pairFound = true; // 짝이 발견되었음을 표시
+            pairFound = true; // 쌍이 발견됨
             return; // 한 쌍만 표시하고 종료
           }
         }
@@ -382,7 +331,7 @@ document.getElementById("hint").addEventListener("click", () => {
     }
   }
 
-  // 짝이 발견되지 않은 경우
+  // 유효한 쌍이 없을 경우 메시지 표시
   if (!pairFound) {
     showGameStatus("No valid pairs found!");
   }
@@ -430,12 +379,12 @@ function showStarEffect(x, y) {
   }, 1000);
 }
 
-// 셀 클릭 처리
 function handleCellClick(x, y) {
   const cellIndex = selectedCells.findIndex(
     (cell) => cell.x === x && cell.y === y
   );
 
+  // 이미 선택된 셀 클릭 시 취소
   if (cellIndex !== -1) {
     const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
     cellDiv.classList.remove("selected");
@@ -443,54 +392,94 @@ function handleCellClick(x, y) {
     return;
   }
 
+  // 새로운 셀 선택
   const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
   cellDiv.classList.add("selected");
   selectedCells.push({ x, y });
 
+  // 두 개 선택된 경우 처리
   if (selectedCells.length === 2) {
     const [first, second] = selectedCells;
 
-    if (
+    // 같은 셀을 선택한 경우 처리
+    if (first.x === second.x && first.y === second.y) {
+      showGameStatus("Cannot select the same cell twice!");
+    }
+    // 올바른 쌍인지 확인
+    else if (
       grid[first.x][first.y] + grid[second.x][second.y] === 10 &&
       isPathClear(first.x, first.y, second.x, second.y)
     ) {
+      // 올바른 쌍
       score += 10;
+      showGameStatus("Correct Pair! +10 Points!");
       document.getElementById("score").textContent = score;
 
-      // 효과 표시
+      const firstCellDiv =
+        document.querySelectorAll(".cell")[first.x * gridSize + first.y];
+      const secondCellDiv =
+        document.querySelectorAll(".cell")[second.x * gridSize + second.y];
+
+      // 올바른 쌍 효과 표시
+      firstCellDiv.classList.add("correct");
+      secondCellDiv.classList.add("correct");
+
       showScoreEffect(first.x, first.y, 10);
       showStarEffect(first.x, first.y);
       showStarEffect(second.x, second.y);
 
+      // **엑스트라 게임에서 시간 리셋**
+      if (isExtraGame) {
+        extraTimeLeft = 10;
+        document.getElementById("timer").textContent = `${extraTimeLeft}s`;
+
+        const progressBar = document.getElementById("progress");
+        if (progressBar) {
+          const progressPercentage = (extraTimeLeft / 10) * 100;
+          progressBar.style.width = `${progressPercentage}%`;
+        }
+      }
+
       setTimeout(() => {
         removeCell(first.x, first.y);
         removeCell(second.x, second.y);
+
+        // 'correct' 클래스 제거 (옵션)
+        firstCellDiv.classList.remove("correct");
+        secondCellDiv.classList.remove("correct");
+
+        // 선택 배열 초기화
+        selectedCells = [];
       }, 500);
-    } else {
+    }
+    // 잘못된 쌍인 경우
+    else {
+      // 잘못된 쌍 처리
+      const firstCellDiv =
+        document.querySelectorAll(".cell")[first.x * gridSize + first.y];
+      const secondCellDiv =
+        document.querySelectorAll(".cell")[second.x * gridSize + second.y];
+
+      // 빨간색 및 흔들림 효과 추가
+      firstCellDiv.classList.add("wrong");
+      secondCellDiv.classList.add("wrong");
+
+      // 500ms 후 효과 제거
+      setTimeout(() => {
+        firstCellDiv.classList.remove("wrong");
+        secondCellDiv.classList.remove("wrong");
+      }, 500);
+
       showGameStatus("Invalid Pair!");
     }
 
+    // 선택 초기화
     selectedCells.forEach(({ x, y }) => {
       const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
       cellDiv.classList.remove("selected");
     });
     selectedCells = [];
   }
-}
-
-// 알맞은 짝을 맞춘 경우
-if (grid[first.x][first.y] + grid[second.x][second.y] === 10) {
-  score += 10;
-  // 점수 효과 호출
-  showScoreEffect(first.x, first.y, 10);
-  showScoreEffect(second.x, second.y, 10);
-
-  // 짝 제거
-  setTimeout(() => {
-    removeCell(first.x, first.y);
-    removeCell(second.x, second.y);
-  }, 500);
-  document.getElementById("score").textContent = score;
 }
 
 function isPathClear(x1, y1, x2, y2) {
@@ -554,134 +543,13 @@ function isAdjacent(x1, y1, x2, y2) {
   return dx <= 1 && dy <= 1 && dx + dy > 0;
 }
 
-function handleCellClick(x, y) {
-  const cellIndex = selectedCells.findIndex(
-    (cell) => cell.x === x && cell.y === y
-  );
-
-  // 이미 선택된 셀 클릭 시 취소
-  if (cellIndex !== -1) {
-    const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-    cellDiv.classList.remove("selected");
-    selectedCells.splice(cellIndex, 1);
-    return;
-  }
-
-  // 새로운 셀 선택
-  const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-  cellDiv.classList.add("selected");
-  selectedCells.push({ x, y });
-
-  // 두 개 선택된 경우 처리
-  if (selectedCells.length === 2) {
-    const [first, second] = selectedCells;
-
-    // 짝 확인: 숫자 합이 10이고, 경로가 뚫려 있어야 함
-    if (
-      grid[first.x][first.y] + grid[second.x][second.y] === 10 &&
-      isPathClear(first.x, first.y, second.x, second.y)
-    ) {
-      // 올바른 쌍
-      score += 10;
-      showGameStatus("Correct Pair! +10 Points!");
-      document.getElementById("score").textContent = score;
-
-      const firstCellDiv =
-        document.querySelectorAll(".cell")[first.x * gridSize + first.y];
-      const secondCellDiv =
-        document.querySelectorAll(".cell")[second.x * gridSize + second.y];
-
-      // 올바른 쌍 효과 표시
-      showScoreEffect(first.x, first.y, 10);
-      showStarEffect(first.x, first.y);
-      showStarEffect(second.x, second.y);
-
-      setTimeout(() => {
-        removeCell(first.x, first.y);
-        removeCell(second.x, second.y);
-      }, 500);
-    } else {
-      // 잘못된 쌍
-      showGameStatus("Invalid Pair!");
-    }
-
-    // 선택 초기화
-    selectedCells.forEach(({ x, y }) => {
-      const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
-      cellDiv.classList.remove("selected");
-    });
-    selectedCells = [];
-  }
-}
-
 function removeCell(x, y) {
   const cellDiv = document.querySelectorAll(".cell")[x * gridSize + y];
+  grid[x][y] = 0; // 그리드 값을 먼저 0으로 설정
   cellDiv.classList.add("fade-out"); // 소멸 애니메이션 추가
   setTimeout(() => {
     cellDiv.textContent = ""; // 텍스트 제거
     cellDiv.classList.remove("fade-out"); // 소멸 애니메이션 제거
     cellDiv.classList.add("empty"); // 빈 셀 스타일 적용
-    grid[x][y] = 0; // 그리드 값 0으로 설정
-  }, 500); // 애니메이션 완료 후 처리
+  }, 500);
 }
-
-document.getElementById("hint").addEventListener("click", () => {
-  if (hintCount <= 0) {
-    showGameStatus("No hints left!");
-    return;
-  }
-
-  // 가능한 짝 찾기
-  let pairFound = false;
-
-  for (let i = 0; i < gridSize; i++) {
-    for (let j = 0; j < gridSize; j++) {
-      if (grid[i][j] === 0) continue; // 빈 셀 건너뛰기
-
-      for (let k = 0; k < gridSize; k++) {
-        for (let l = 0; l < gridSize; l++) {
-          if (
-            grid[k][l] === 0 || // 빈 셀은 건너뛰기
-            (i === k && j === l) // 동일한 셀은 무시
-          )
-            continue;
-
-          // 숫자 합과 경로 확인
-          if (grid[i][j] + grid[k][l] === 10 && isPathClear(i, j, k, l)) {
-            // 유효한 쌍 발견
-            const firstCellDiv =
-              document.querySelectorAll(".cell")[i * gridSize + j];
-            const secondCellDiv =
-              document.querySelectorAll(".cell")[k * gridSize + l];
-
-            // 힌트 강조
-            firstCellDiv.classList.add("hint");
-            secondCellDiv.classList.add("hint");
-
-            setTimeout(() => {
-              firstCellDiv.classList.remove("hint");
-              secondCellDiv.classList.remove("hint");
-            }, 1000);
-
-            // 점수 차감 및 힌트 사용 감소
-            score -= 5;
-            document.getElementById("score").textContent = score;
-
-            hintCount--;
-            document.getElementById(
-              "hint"
-            ).textContent = `Hint (${hintCount} left)`;
-
-            pairFound = true;
-            return; // 한 쌍만 표시하고 종료
-          }
-        }
-      }
-    }
-  }
-
-  // 유효한 짝이 없을 경우
-  if (!pairFound) {
-    showGameStatus("No valid pairs found!");
-  }
-});
