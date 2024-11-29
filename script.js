@@ -156,64 +156,6 @@ function renderGrid() {
     });
   });
 }
-// 경로가 비어있는지 확인하는 함수입니다.
-function isPathClear(x1, y1, x2, y2) {
-  // 같은 행에서 연결 확인 (직선)
-  if (x1 === x2) {
-    const [start, end] = [Math.min(y1, y2), Math.max(y1, y2)];
-    for (let y = start + 1; y < end; y++) {
-      if (grid[x1][y] !== 0) return false; // 중간에 숫자가 있으면 차단
-    }
-    return true;
-  }
-
-  // 같은 열에서 연결 확인 (직선)
-  if (y1 === y2) {
-    const [start, end] = [Math.min(x1, x2), Math.max(x1, x2)];
-    for (let x = start + 1; x < end; x++) {
-      if (grid[x][y1] !== 0) return false; // 중간에 숫자가 있으면 차단
-    }
-    return true;
-  }
-
-  // 대각선에서 연결 확인 (중간에 숫자 하나만 허용)
-  if (Math.abs(x2 - x1) === Math.abs(y2 - y1)) {
-    let middleBlocked = 0;
-    const dx = x2 > x1 ? 1 : -1;
-    const dy = y2 > y1 ? 1 : -1;
-
-    let cx = x1 + dx;
-    let cy = y1 + dy;
-
-    while (cx !== x2 && cy !== y2) {
-      if (grid[cx][cy] !== 0) {
-        middleBlocked++;
-        if (middleBlocked > 1) return false;
-      }
-      cx += dx;
-      cy += dy;
-    }
-    return true;
-  }
-
-  // 꺾이는 경로 확인
-  if (
-    grid[x1][y2] === 0 &&
-    isPathClear(x1, y1, x1, y2) &&
-    isPathClear(x1, y2, x2, y2)
-  ) {
-    return true;
-  }
-  if (
-    grid[x2][y1] === 0 &&
-    isPathClear(x1, y1, x2, y1) &&
-    isPathClear(x2, y1, x2, y2)
-  ) {
-    return true;
-  }
-
-  return false;
-}
 
 // 인접 여부 확인하는 함수
 function isAdjacent(x1, y1, x2, y2) {
@@ -552,61 +494,64 @@ if (grid[first.x][first.y] + grid[second.x][second.y] === 10) {
 }
 
 function isPathClear(x1, y1, x2, y2) {
-  // 같은 행에서 연결 확인 (직선)
-  if (x1 === x2) {
-    const [start, end] = [Math.min(y1, y2), Math.max(y1, y2)];
-    for (let y = start + 1; y < end; y++) {
-      if (grid[x1][y] !== 0) return false; // 중간에 숫자가 있으면 차단
-    }
-    return true; // 경로가 뚫려 있음
+  // 먼저 두 셀이 인접한지 확인합니다 (가로, 세로, 대각선 포함)
+  if (isAdjacent(x1, y1, x2, y2)) {
+    return true;
   }
 
-  // 같은 열에서 연결 확인 (직선)
-  if (y1 === y2) {
-    const [start, end] = [Math.min(x1, x2), Math.max(x1, x2)];
-    for (let x = start + 1; x < end; x++) {
-      if (grid[x][y1] !== 0) return false; // 중간에 숫자가 있으면 차단
+  // 그 외의 경우 기존의 경로 탐색 로직을 사용합니다
+  // BFS 알고리즘을 이용한 경로 탐색 코드 (이전에 제공한 코드 사용)
+  const maxTurns = 2; // 최대 꺾임 횟수
+  const visited = Array.from({ length: gridSize }, () =>
+    Array(gridSize).fill(false)
+  );
+  const queue = [];
+
+  queue.push({ x: x1, y: y1, dir: null, turns: 0 });
+  visited[x1][y1] = true;
+
+  while (queue.length > 0) {
+    const { x, y, dir, turns } = queue.shift();
+
+    if (x === x2 && y === y2 && turns <= maxTurns) {
+      return true;
     }
-    return true; // 경로가 뚫려 있음
-  }
 
-  // 대각선에서 연결 확인 (중간에 숫자 하나만 허용)
-  if (Math.abs(x2 - x1) === Math.abs(y2 - y1)) {
-    let middleBlocked = 0;
-    const dx = x2 > x1 ? 1 : -1; // x 방향 이동량
-    const dy = y2 > y1 ? 1 : -1; // y 방향 이동량
+    if (turns > maxTurns) continue;
 
-    let cx = x1 + dx;
-    let cy = y1 + dy;
+    const directions = [
+      { dx: -1, dy: 0, dir: "up" },
+      { dx: 1, dy: 0, dir: "down" },
+      { dx: 0, dy: -1, dir: "left" },
+      { dx: 0, dy: 1, dir: "right" },
+    ];
 
-    while (cx !== x2 && cy !== y2) {
-      if (grid[cx][cy] !== 0) {
-        middleBlocked++;
-        if (middleBlocked > 1) return false; // 중간에 숫자가 2개 이상이면 차단
+    for (const { dx, dy, dir: newDir } of directions) {
+      const nx = x + dx;
+      const ny = y + dy;
+
+      if (
+        nx >= 0 &&
+        nx < gridSize &&
+        ny >= 0 &&
+        ny < gridSize &&
+        !visited[nx][ny] &&
+        (grid[nx][ny] === 0 || (nx === x2 && ny === y2))
+      ) {
+        const newTurns = dir === null || dir === newDir ? turns : turns + 1;
+        visited[nx][ny] = true;
+        queue.push({ x: nx, y: ny, dir: newDir, turns: newTurns });
       }
-      cx += dx;
-      cy += dy;
     }
-    return true; // 중간에 숫자가 하나만 있는 경우
   }
 
-  // 꺾이는 경로 확인 (사천성 스타일)
-  if (
-    grid[x1][y2] === 0 && // 중간 노드가 비어 있고
-    isPathClear(x1, y1, x1, y2) && // 첫 번째 노드에서 중간 노드까지 경로가 명확하며
-    isPathClear(x1, y2, x2, y2) // 중간 노드에서 두 번째 노드까지 경로가 명확한 경우
-  ) {
-    return true;
-  }
-  if (
-    grid[x2][y1] === 0 && // 다른 중간 노드가 비어 있고
-    isPathClear(x1, y1, x2, y1) && // 첫 번째 노드에서 중간 노드까지 경로가 명확하며
-    isPathClear(x2, y1, x2, y2) // 중간 노드에서 두 번째 노드까지 경로가 명확한 경우
-  ) {
-    return true;
-  }
+  return false;
+}
 
-  return false; // 연결 불가능
+function isAdjacent(x1, y1, x2, y2) {
+  const dx = Math.abs(x1 - x2);
+  const dy = Math.abs(y1 - y2);
+  return dx <= 1 && dy <= 1 && dx + dy > 0;
 }
 
 function handleCellClick(x, y) {
@@ -678,134 +623,6 @@ function removeCell(x, y) {
     cellDiv.classList.add("empty"); // 빈 셀 스타일 적용
     grid[x][y] = 0; // 그리드 값 0으로 설정
   }, 500); // 애니메이션 완료 후 처리
-}
-
-function isPathClear(x1, y1, x2, y2) {
-  // 같은 행에서 연결 확인
-  if (x1 === x2) {
-    const [start, end] = [Math.min(y1, y2), Math.max(y1, y2)];
-    for (let y = start + 1; y < end; y++) {
-      if (grid[x1][y] !== 0) return false; // 중간에 숫자가 있으면 차단
-    }
-    return true; // 경로가 뚫려 있음
-  }
-
-  // 같은 열에서 연결 확인
-  if (y1 === y2) {
-    const [start, end] = [Math.min(x1, x2), Math.max(x1, x2)];
-    for (let x = start + 1; x < end; x++) {
-      if (grid[x][y1] !== 0) return false; // 중간에 숫자가 있으면 차단
-    }
-    return true; // 경로가 뚫려 있음
-  }
-
-  // 대각선에서 연결 확인 (중간에 숫자 하나만 허용)
-  if (Math.abs(x2 - x1) === Math.abs(y2 - y1)) {
-    let middleBlocked = 0;
-    const dx = x2 > x1 ? 1 : -1; // x 방향 이동량
-    const dy = y2 > y1 ? 1 : -1; // y 방향 이동량
-
-    let cx = x1 + dx;
-    let cy = y1 + dy;
-
-    while (cx !== x2 && cy !== y2) {
-      if (grid[cx][cy] !== 0) {
-        middleBlocked++;
-        if (middleBlocked > 1) return false; // 중간에 숫자가 2개 이상이면 차단
-      }
-      cx += dx;
-      cy += dy;
-    }
-    return true; // 중간에 숫자가 하나만 있는 경우
-  }
-
-  // 꺾이는 경로 확인 (사천성 스타일)
-  if (
-    grid[x1][y2] === 0 &&
-    isPathClear(x1, y1, x1, y2) &&
-    isPathClear(x1, y2, x2, y2)
-  ) {
-    return true;
-  }
-  if (
-    grid[x2][y1] === 0 &&
-    isPathClear(x1, y1, x2, y1) &&
-    isPathClear(x2, y1, x2, y2)
-  ) {
-    return true;
-  }
-
-  return false; // 연결 불가능
-}
-
-function isPathClear(x1, y1, x2, y2) {
-  console.log(`Checking path between (${x1}, ${y1}) and (${x2}, ${y2})`);
-
-  // 같은 행에서 연결 확인 (직선)
-  if (x1 === x2) {
-    const [start, end] = [Math.min(y1, y2), Math.max(y1, y2)];
-    for (let y = start + 1; y < end; y++) {
-      if (grid[x1][y] !== 0) {
-        console.log(`Blocked at (${x1}, ${y})`);
-        return false; // 중간에 숫자가 있으면 차단
-      }
-    }
-    return true; // 경로가 뚫려 있음
-  }
-
-  // 같은 열에서 연결 확인 (직선)
-  if (y1 === y2) {
-    const [start, end] = [Math.min(x1, x2), Math.max(x1, x2)];
-    for (let x = start + 1; x < end; x++) {
-      if (grid[x][y1] !== 0) {
-        console.log(`Blocked at (${x}, ${y1})`);
-        return false; // 중간에 숫자가 있으면 차단
-      }
-    }
-    return true; // 경로가 뚫려 있음
-  }
-
-  // 대각선에서 연결 확인 (중간에 숫자 하나만 허용)
-  if (Math.abs(x2 - x1) === Math.abs(y2 - y1)) {
-    let middleBlocked = 0;
-    const dx = x2 > x1 ? 1 : -1; // x 방향 이동량
-    const dy = y2 > y1 ? 1 : -1; // y 방향 이동량
-
-    let cx = x1 + dx;
-    let cy = y1 + dy;
-
-    while (cx !== x2 && cy !== y2) {
-      if (grid[cx][cy] !== 0) {
-        middleBlocked++;
-        console.log(`Middle blocked at (${cx}, ${cy})`);
-        if (middleBlocked > 1) {
-          return false; // 중간에 숫자가 2개 이상이면 차단
-        }
-      }
-      cx += dx;
-      cy += dy;
-    }
-    return true; // 중간에 숫자가 하나만 있는 경우
-  }
-
-  // 꺾이는 경로 확인 (사천성 스타일)
-  if (
-    grid[x1][y2] === 0 &&
-    isPathClear(x1, y1, x1, y2) &&
-    isPathClear(x1, y2, x2, y2)
-  ) {
-    return true;
-  }
-  if (
-    grid[x2][y1] === 0 &&
-    isPathClear(x1, y1, x2, y1) &&
-    isPathClear(x2, y1, x2, y2)
-  ) {
-    return true;
-  }
-
-  console.log(`No valid path between (${x1}, ${y1}) and (${x2}, ${y2})`);
-  return false; // 연결 불가능
 }
 
 document.getElementById("hint").addEventListener("click", () => {
