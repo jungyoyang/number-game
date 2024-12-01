@@ -117,27 +117,54 @@ document.body.addEventListener("keydown", (e) => {
 
 // 랜덤 그리드 생성
 function generateRandomGrid() {
-  grid = Array.from({ length: gridSize }, () =>
-    Array.from({ length: gridSize }, () => Math.floor(Math.random() * 9) + 1)
-  );
+  let gridValid = false;
+  while (!gridValid) {
+    grid = Array.from({ length: gridSize }, () =>
+      Array.from({ length: gridSize }, () => Math.floor(Math.random() * 9) + 1)
+    );
 
-  let pairsAdded = 0;
-  while (pairsAdded < 8) {
-    const x1 = Math.floor(Math.random() * gridSize);
-    const y1 = Math.floor(Math.random() * gridSize);
-    const x2 = Math.floor(Math.random() * gridSize);
-    const y2 = Math.floor(Math.random() * gridSize);
+    let pairsAdded = 0;
+    while (pairsAdded < 8) {
+      const x1 = Math.floor(Math.random() * gridSize);
+      const y1 = Math.floor(Math.random() * gridSize);
+      const x2 = Math.floor(Math.random() * gridSize);
+      const y2 = Math.floor(Math.random() * gridSize);
 
-    if (x1 !== x2 || y1 !== y2) {
-      const value = Math.floor(Math.random() * 9) + 1;
-      if (grid[x1][y1] !== 0 && grid[x2][y2] !== 0) {
-        grid[x1][y1] = value;
-        grid[x2][y2] = 10 - value;
-        pairsAdded++;
+      if (x1 !== x2 || y1 !== y2) {
+        const value = Math.floor(Math.random() * 9) + 1;
+        if (grid[x1][y1] !== 0 && grid[x2][y2] !== 0) {
+          grid[x1][y1] = value;
+          grid[x2][y2] = 10 - value;
+          pairsAdded++;
+        }
+      }
+    }
+    gridValid = checkForValidPairs();
+  }
+  renderGrid();
+}
+function checkForValidPairs() {
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      if (grid[i][j] === 0) continue; // 빈 셀은 건너뛰기
+
+      for (let k = 0; k < gridSize; k++) {
+        for (let l = 0; l < gridSize; l++) {
+          if (grid[k][l] === 0 || (i === k && j === l)) continue; // 빈 셀 및 동일한 셀은 무시
+          if (grid[i][j] + grid[k][l] === 10 && isPathClear(i, j, k, l)) {
+            return true; // 유효한 쌍을 찾으면 true 반환
+          }
+        }
       }
     }
   }
-  renderGrid();
+  return false; // 유효한 쌍이 없으면 false 반환
+}
+function regenerateGridIfNoValidPairs() {
+  if (!checkForValidPairs()) {
+    showGameStatus("No valid pairs found! Regenerating grid...");
+    generateRandomGrid(); // 새로운 그리드 생성
+  }
 }
 
 // 그리드 렌더링
@@ -159,6 +186,7 @@ function renderGrid() {
       gridContainer.appendChild(cellDiv);
     });
   });
+  regenerateGridIfNoValidPairs(); // 만약 유효한 쌍이 없으면 그리드를 재생성해요
 }
 
 // 인접 여부 확인하는 함수
@@ -195,7 +223,7 @@ function initGame() {
   foundPairs = 0;
   selectedCells = [];
   timerPaused = false;
-  hintCount = 3;
+  hintCount = 10;
 
   document.getElementById("hint").textContent = `Hint (${hintCount} left)`;
 
@@ -334,6 +362,7 @@ document.getElementById("hint").addEventListener("click", () => {
   // 유효한 쌍이 없을 경우 메시지 표시
   if (!pairFound) {
     showGameStatus("No valid pairs found!");
+    generateRandomGrid();
   }
 });
 
