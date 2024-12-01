@@ -160,6 +160,12 @@ function checkForValidPairs() {
   }
   return false; // 유효한 쌍이 없으면 false 반환
 }
+function regenerateGridIfNoValidPairs() {
+  if (!checkForValidPairs()) {
+    showGameStatus("No valid pairs found! Regenerating grid...");
+    generateRandomGrid(); // 새로운 그리드 생성
+  }
+}
 
 // 그리드 렌더링
 function renderGrid() {
@@ -450,10 +456,6 @@ function handleCellClick(x, y) {
       showScoreEffect(first.x, first.y, 10);
       showStarEffect(first.x, first.y);
       showStarEffect(second.x, second.y);
-      if (!pairFound) {
-        showGameStatus("No valid pairs found!");
-        generateRandomGrid();
-      }
 
       // **엑스트라 게임에서 시간 리셋**
       if (isExtraGame) {
