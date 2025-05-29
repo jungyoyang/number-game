@@ -109,5 +109,4 @@ number-grid-game/
 
 ## 👥 Contributors
 
-* **Jungyo Yang**: UI/UX design, game logic, algorithm implementation
-* 강동호, 김이삭, 백승현
+강동호 김이삭 백승현 양정요
